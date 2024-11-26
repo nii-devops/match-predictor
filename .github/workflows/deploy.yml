@@ -1,0 +1,58 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main
+
+
+jobs:
+  checkout_mycode:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: check out
+        id: check
+        run: |
+          echo "checking out the code"
+
+
+  deploy_to_qa:
+    needs: checkout_mycode
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: 
+      name: EPL-Predictions
+      url: http://eplpredictions.niiapps.com/
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.5.0
+        with:
+          ssh-private-key: ${{ secrets.SERVER_SSH_PRIVATE_KEY }}
+
+      - name: Copy files to EC2
+        run: scp -r -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "${{ github.workspace }}" ec2-user@172.31.95.218:~/website/
+
+      - name: SSH into EC2
+        run: | 
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ec2-user@172.31.95.218 "sudo cp -r ~/website/eplpredictions.niiapps.com/* /var/www/html/"
+
+  qa_send_notification:
+    needs: deploy_to_qa
+    if: needs.deploy_to_qa.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send notification to repository owner
+        run: |
+          REPO_OWNER=$(jq --raw-output .repository.owner.login "${GITHUB_EVENT_PATH}")
+          NOTIFICATION="Deployment qa completed."
+          API_URL="https://api.github.com/repos/${GITHUB_REPOSITORY}/notifications"
+          RESPONSE=$(curl -sSL -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -H "Content-Type: application/json" -X POST -d "{\"subject\":\"$NOTIFICATION\",\"repository\":\"$REPO_OWNER/$GITHUB_REPOSITORY\"}" "$API_URL")
+          echo "Notification sent to repository owner: $REPO_OWNER"         
+
