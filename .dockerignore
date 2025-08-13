@@ -44,4 +44,4 @@ test/
 git_commands.txt
 db_migrations.txt
 app/templates/backups
-
+docker_commands.md

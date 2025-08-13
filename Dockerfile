@@ -5,9 +5,6 @@ FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# Google Cloud Run sets the PORT env variable automatically
-ENV PORT=8080
-
 # Set working directory
 WORKDIR /app
 
@@ -17,8 +14,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy and install Python dependencies
+# It's best to include gunicorn in your requirements.txt
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt gunicorn
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the entire project
 COPY . .
@@ -27,5 +25,5 @@ COPY . .
 EXPOSE 8080
 
 # Command to run the app with Gunicorn
-# Replace "app:create_app()" with your actual Flask app instance if using factory pattern
-CMD exec gunicorn --bind :$PORT --workers 2 --threads 4 --timeout 0 run:app
+# "main:app" assumes main.py exists and defines `app = create_app()`
+CMD ["gunicorn", "--bind", "0.0.0.0:$PORT", "--workers", "2", "--threads", "4", "main:app"]

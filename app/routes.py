@@ -71,6 +71,7 @@ def index():
         return render_template('error.html', error_message='Could not retrieve active match weeks.')
 
 
+
 @bp.route('/login')
 def login():
     if current_user.is_authenticated:
@@ -80,7 +81,7 @@ def login():
 
 @bp.route('/authorize/google')
 def google_auth():
-    redirect_uri = url_for('main.google_callback', _external=True)
+    redirect_uri = os.getenv('REDIRECT_URI')
     try:
         return oauth.google.authorize_redirect(redirect_uri)
     except Exception as e:
